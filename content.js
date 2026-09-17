@@ -1,3 +1,5 @@
+window.__chessAssistantLoaded = true;
+console.log('Chess Assistant content script loaded!');
 function getPieceMap() {
   const board = document.querySelector('wc-chess-board');
   if (!board) return null;
