@@ -3,7 +3,7 @@
   "name": "Chess Assistant",
   "version": "1.0",
   "description": "Suggests the best move on Chess.com using Stockfish",
-  "permissions": ["activeTab", "scripting"],
+  "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": ["https://www.chess.com/*"],
   "content_scripts": [
     {

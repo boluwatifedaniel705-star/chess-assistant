@@ -2,38 +2,42 @@ function analyze() {
   document.getElementById('status').textContent = 'Analyzing...';
   document.getElementById('best-move').textContent = '...';
 
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    chrome.scripting.executeScript({
-      target: { tabId: tabs[0].id },
-      func: () => {
-        // Get the FEN position from Chess.com
-        const board = document.querySelector('chess-board') || document.querySelector('.board');
-        if (!board) return null;
-        const fen = board.getAttribute('fen') || board.fen;
-        return fen;
-      }
-    }, (results) => {
-      const fen = results?.[0]?.result;
-      if (!fen) {
-        document.getElementById('status').textContent = 'Could not read board. Make sure you are in a game.';
-        document.getElementById('best-move').textContent = '—';
-        return;
-      }
-      document.getElementById('status').textContent = `Position: ${fen.split(' ')[0]}`;
-      getBestMove(fen);
-    });
+  chrome.storage.local.get(['currentFen', 'myTurn', 'playerColor'], (result) => {
+    const fen = result.currentFen;
+    const myTurn = result.myTurn;
+    const playerColor = result.playerColor;
+
+    if (!fen) {
+      document.getElementById('status').textContent = 'No position found. Make sure you are in a game on Chess.com.';
+      document.getElementById('best-move').textContent = '—';
+      return;
+    }
+
+    if (!myTurn) {
+      document.getElementById('status').textContent = `You are playing as ${playerColor}. Waiting for your turn...`;
+      document.getElementById('best-move').textContent = '⏳';
+      return;
+    }
+
+    document.getElementById('status').textContent = `Your turn as ${playerColor}! Calculating...`;
+    getBestMove(fen);
   });
 }
 
 function getBestMove(fen) {
   const worker = new Worker(chrome.runtime.getURL('stockfish.js'));
-  
+
   worker.onmessage = (e) => {
     const msg = e.data;
-    if (msg.startsWith('bestmove')) {
+    if (typeof msg === 'string' && msg.startsWith('bestmove')) {
       const move = msg.split(' ')[1];
-      document.getElementById('best-move').textContent = move;
-      document.getElementById('status').textContent = 'Best move found!';
+      if (move && move !== '(none)') {
+        document.getElementById('best-move').textContent = move;
+        document.getElementById('status').textContent = '✅ Best move found!';
+      } else {
+        document.getElementById('best-move').textContent = '—';
+        document.getElementById('status').textContent = 'Game might be over.';
+      }
       worker.terminate();
     }
   };
