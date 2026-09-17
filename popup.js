@@ -1,3 +1,4 @@
+document.getElementById('analyze-btn').addEventListener('click', analyze);
 function analyze() {
   document.getElementById('status').textContent = 'Analyzing...';
   document.getElementById('best-move').textContent = '...';
