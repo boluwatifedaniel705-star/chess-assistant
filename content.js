@@ -1,5 +1,6 @@
 window.__chessAssistantLoaded = true;
 console.log('Chess Assistant content script loaded!');
+
 function getPieceMap() {
   const board = document.querySelector('wc-chess-board');
   if (!board) return null;
@@ -10,7 +11,7 @@ function getPieceMap() {
   pieces.forEach(piece => {
     const classes = Array.from(piece.classList);
     const squareClass = classes.find(c => c.startsWith('square-'));
-    const pieceClass = classes.find(c => c.length === 2 && ['wp','wr','wn','wb','wq','wk','bp','br','bn','bb','bq','bk'].includes(c));
+    const pieceClass = classes.find(c => ['wp','wr','wn','wb','wq','wk','bp','br','bn','bb','bq','bk'].includes(c));
     
     if (squareClass && pieceClass) {
       const file = parseInt(squareClass[7]);
@@ -47,7 +48,6 @@ function pieceMapToFen(pieceMap) {
 }
 
 function getActiveColor() {
-  // Check move list to determine whose turn it is
   const moveList = document.querySelector('wc-simple-move-list');
   if (!moveList) return 'w';
   const nodes = moveList.querySelectorAll('.node');
@@ -59,11 +59,14 @@ function getActiveColor() {
 function getPlayerColor() {
   const board = document.querySelector('wc-chess-board');
   if (!board) return 'white';
-  // Check if board is flipped
-  const playerBottom = document.querySelector('#board-layout-player-bottom .cc-user-username-component');
-  const username = playerBottom?.textContent?.trim();
-  // If username is at bottom, playing as white (normal orientation)
-  return 'white'; // default
+  
+  const coordinates = board.querySelectorAll('.coordinates text');
+  if (coordinates.length > 0) {
+    const firstLabel = coordinates[0]?.textContent?.trim();
+    return firstLabel === '8' ? 'black' : 'white';
+  }
+  
+  return 'white';
 }
 
 function updatePosition() {
