@@ -59,13 +59,14 @@ function getActiveColor() {
 function getPlayerColor() {
   const board = document.querySelector('wc-chess-board');
   if (!board) return 'white';
-  
+
   const coordinates = board.querySelectorAll('.coordinates text');
   if (coordinates.length > 0) {
     const firstLabel = coordinates[0]?.textContent?.trim();
-    return firstLabel === '8' ? 'black' : 'white';
+    // Changed from 'black' : 'white' to 'white' : 'black'
+    return firstLabel === '8' ? 'white' : 'black'; 
   }
-  
+
   return 'white';
 }
 
