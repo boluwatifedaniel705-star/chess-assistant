@@ -1,57 +1,94 @@
-let currentFen = null;
-let playerColor = null;
-
-function getPlayerColor() {
-  // Chess.com flips the board when you play as black
-  const board = document.querySelector('chess-board');
-  if (!board) return 'white';
-  const flipped = board.getAttribute('flipped');
-  return flipped === 'true' || flipped === '' ? 'black' : 'white';
-}
-
-function isMyTurn(fen) {
-  if (!fen) return false;
-  // FEN format: position active_color castling ...
-  // active_color is 'w' for white, 'b' for black
-  const parts = fen.split(' ');
-  const activeColor = parts[1];
-  const color = getPlayerColor();
-  return (activeColor === 'w' && color === 'white') || 
-         (activeColor === 'b' && color === 'black');
-}
-
-function getBoardFen() {
-  const board = document.querySelector('chess-board');
+function getPieceMap() {
+  const board = document.querySelector('wc-chess-board');
   if (!board) return null;
-  const fen = board.game?.getFEN?.() || 
-               board.getAttribute('fen') ||
-               window.game?.getFEN?.();
+  
+  const pieces = board.querySelectorAll('.piece');
+  const pieceMap = {};
+  
+  pieces.forEach(piece => {
+    const classes = Array.from(piece.classList);
+    const squareClass = classes.find(c => c.startsWith('square-'));
+    const pieceClass = classes.find(c => c.length === 2 && ['wp','wr','wn','wb','wq','wk','bp','br','bn','bb','bq','bk'].includes(c));
+    
+    if (squareClass && pieceClass) {
+      const file = parseInt(squareClass[7]);
+      const rank = parseInt(squareClass[8]);
+      pieceMap[`${file}${rank}`] = pieceClass;
+    }
+  });
+  
+  return pieceMap;
+}
+
+function pieceMapToFen(pieceMap) {
+  const pieceToFen = {
+    'wp': 'P', 'wr': 'R', 'wn': 'N', 'wb': 'B', 'wq': 'Q', 'wk': 'K',
+    'bp': 'p', 'br': 'r', 'bn': 'n', 'bb': 'b', 'bq': 'q', 'bk': 'k'
+  };
+  
+  let fen = '';
+  for (let rank = 8; rank >= 1; rank--) {
+    let empty = 0;
+    for (let file = 1; file <= 8; file++) {
+      const piece = pieceMap[`${file}${rank}`];
+      if (piece) {
+        if (empty > 0) { fen += empty; empty = 0; }
+        fen += pieceToFen[piece];
+      } else {
+        empty++;
+      }
+    }
+    if (empty > 0) fen += empty;
+    if (rank > 1) fen += '/';
+  }
   return fen;
 }
 
-function updateFen() {
-  const fen = getBoardFen();
-  if (fen && fen !== currentFen) {
-    currentFen = fen;
-    const myTurn = isMyTurn(fen);
-    chrome.storage.local.set({ 
-      currentFen: fen,
-      myTurn: myTurn,
-      playerColor: getPlayerColor()
-    });
-  }
+function getActiveColor() {
+  // Check move list to determine whose turn it is
+  const moveList = document.querySelector('wc-simple-move-list');
+  if (!moveList) return 'w';
+  const nodes = moveList.querySelectorAll('.node');
+  const lastNode = nodes[nodes.length - 1];
+  if (!lastNode) return 'w';
+  return lastNode.classList.contains('white-move') ? 'b' : 'w';
+}
+
+function getPlayerColor() {
+  const board = document.querySelector('wc-chess-board');
+  if (!board) return 'white';
+  // Check if board is flipped
+  const playerBottom = document.querySelector('#board-layout-player-bottom .cc-user-username-component');
+  const username = playerBottom?.textContent?.trim();
+  // If username is at bottom, playing as white (normal orientation)
+  return 'white'; // default
+}
+
+function updatePosition() {
+  const pieceMap = getPieceMap();
+  if (!pieceMap) return;
+  
+  const pieceFen = pieceMapToFen(pieceMap);
+  const activeColor = getActiveColor();
+  const fen = `${pieceFen} ${activeColor} KQkq - 0 1`;
+  
+  const playerColor = getPlayerColor();
+  const myTurn = (activeColor === 'w' && playerColor === 'white') || 
+                 (activeColor === 'b' && playerColor === 'black');
+  
+  chrome.storage.local.set({ currentFen: fen, myTurn, playerColor });
 }
 
 const observer = new MutationObserver(() => {
-  updateFen();
+  updatePosition();
 });
 
 observer.observe(document.body, {
   childList: true,
   subtree: true,
   attributes: true,
-  attributeFilter: ['fen']
+  attributeFilter: ['class']
 });
 
-setInterval(updateFen, 1000);
-updateFen();
+setInterval(updatePosition, 1000);
+updatePosition();
